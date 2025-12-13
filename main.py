@@ -1,41 +1,58 @@
 import logging
-from telegram.ext import Application, MessageHandler, filters, CommandHandler, Updater, ConversationHandler
+from telegram.ext import Application, MessageHandler, filters, CommandHandler, ConversationHandler
 from config import BOT_TOKEN
-from functions import start, hotels_in_city, restaurants, weather_response, sights_in_city, sights_numbers
+from functions import start, help, hotels_in_city, restaurants, weather_response, sights_in_city, sights_numbers, get_location_cafes, get_location_hotels, stop
 from db_operators import create_database
-
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 
 logger = logging.getLogger(__name__)
-all_coords = []
-
-
-async def stop(update, context):
-    await update.message.reply_text("Всего доброго!")
-    return ConversationHandler.END
 
 
 def main():
     application = Application.builder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("hotels", hotels_in_city))
-    application.add_handler(CommandHandler("cafes", restaurants))
+    application.add_handler(CommandHandler("help", help))
     application.add_handler(CommandHandler("weather", weather_response))
-    # application.add_handler(text_handler)
 
-    conv_handler = ConversationHandler(
+    conv_handler_sights = ConversationHandler(
         entry_points=[CommandHandler('sights', sights_in_city)],
+
         states={
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, sights_numbers)]
         },
+
         fallbacks=[CommandHandler('stop', stop)]
     )
 
-    application.add_handler(conv_handler)
+    application.add_handler(conv_handler_sights)
+
+    conv_handler_cafes = ConversationHandler(
+        entry_points=[CommandHandler('cafes', restaurants)],
+
+        states={
+            1: [MessageHandler(filters._Location(), get_location_cafes)]
+        },
+
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+
+    application.add_handler(conv_handler_cafes)
+
+    conv_handler_hotels = ConversationHandler(
+        entry_points=[CommandHandler('hotels', hotels_in_city)],
+
+        states={
+            2: [MessageHandler(filters._Location(), get_location_hotels)]
+        },
+
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+
+    application.add_handler(conv_handler_hotels)
 
     application.run_polling()
 
