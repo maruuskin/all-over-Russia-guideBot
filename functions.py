@@ -1,13 +1,16 @@
 import sqlite3
-from telegram import ReplyKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import ConversationHandler
+from telegram.ext import ContextTypes
 from config import API_KEY
 import requests
 import json
 from db_operators import add_sights_to_db
+from log_operators import log_user_action
 
 
 async def start(update, context):
+    log_user_action(update, context, "/start")
     # Вывод приветственного сообщения
     await update.message.reply_text(
         "Доброго времени суток тебе, человек)) Я бот-путешественник, и я помогу сделать твою поездку незабываемой!")
@@ -23,6 +26,8 @@ async def start(update, context):
 
 
 async def help(update, context):
+    log_user_action(update, context, "/help")
+
     # Информация о том, что умеет бот
     await update.message.reply_text(
         "Что я умею?\n\nКоманда /weather <название_города> позволяет узнать погоду в указанном городе.\n\nКоманда "
@@ -34,7 +39,7 @@ async def help(update, context):
 
 
 # Сбор информации об отелях
-def find_hotels(response):
+def find_hotels(response, update, context):
     hotels = ''
     cnt = 0
     for hotel in response['features']:
@@ -54,6 +59,7 @@ def find_hotels(response):
 
 # Отели в городе
 async def hotels_in_city(update, context):
+    log_user_action(update, context, "/hotels")
     try:
         search_api_server = "https://search-maps.yandex.ru/v1/"
 
@@ -68,7 +74,7 @@ async def hotels_in_city(update, context):
             }
 
             response = requests.get(search_api_server, params=search_params).json()
-            await update.message.reply_text('Гостиницы в городе ' + city + '\n' + find_hotels(response))
+            await update.message.reply_text('Гостиницы в городе ' + city + '\n' + find_hotels(response, update, context))
 
         # Если город не задан
         else:
@@ -78,15 +84,20 @@ async def hotels_in_city(update, context):
                 f'''Укажите свое местоположение''', reply_markup=markup)
             return 2
 
-    except Exception:
+    except Exception as ex:
+        print(ex)
         await update.message.reply_text(
             'Не удалось получить информацию о гостиницах. Проверь название города. Он точно находится в России?')
 
 
 # Отели по местоположению пользователя
 async def get_location_hotels(update, context):
+    location = update.message.location
+    action = f"hotel;{location.latitude};{location.longitude}"
+    log_user_action(update, context, action)
     search_api_server = "https://search-maps.yandex.ru/v1/"
     current_pos = (update.message.location.latitude, update.message.location.longitude)
+
     search_params = {
         "apikey": API_KEY,
         "text": "отель",
@@ -96,7 +107,7 @@ async def get_location_hotels(update, context):
     }
 
     response = requests.get(search_api_server, params=search_params).json()
-    await update.message.reply_text('Отели недалеко от Вас:\n' + find_hotels(response))
+    await update.message.reply_text('Отели недалеко от Вас:\n' + find_hotels(response, update, context))
 
     return ConversationHandler.END
 
@@ -129,6 +140,8 @@ def find_cafes(response):
 
 # Рестораны в городе
 async def restaurants(update, context):
+    log_user_action(update, context, "/cafes")
+
     try:
         search_api_server = "https://search-maps.yandex.ru/v1/"
         if context.args:
@@ -161,6 +174,9 @@ async def restaurants(update, context):
 
 # Рестораны по местоположению пользователя
 async def get_location_cafes(update, context):
+    location = update.message.location
+    action = f"cafe;{location.latitude};{location.longitude}"
+    log_user_action(update, context, action)
     search_api_server = "https://search-maps.yandex.ru/v1/"
     current_pos = (update.message.location.latitude, update.message.location.longitude)
     search_params = {
@@ -179,6 +195,7 @@ async def get_location_cafes(update, context):
 
 # Достопримечательности в городе
 async def sights_in_city(update, context):
+    log_user_action(update, context, "/sights")
     try:
         search_api_server = "https://search-maps.yandex.ru/v1/"
         city = context.args[0]
@@ -192,7 +209,7 @@ async def sights_in_city(update, context):
         }
 
         response = requests.get(search_api_server, params=search_params).json()
-        with open('jsons.json', 'w') as f:
+        with open('api_response.json', 'w') as f:
             json.dump(response, f, indent=4)
 
         cnt = 0
@@ -250,6 +267,8 @@ async def sights_in_city(update, context):
 
 # Достопримечательности в городе по номерам
 async def sights_numbers(update, context):
+    action = f"Выбор достопримечательности: {update.message.text}"
+    log_user_action(update, context, action)
     numbers = update.message.text.split()
     name = update.message.from_user.username
     conn = sqlite3.connect('cities.db')
@@ -277,6 +296,7 @@ async def sights_numbers(update, context):
 
 # Погода в городе
 async def weather_response(update, context):
+    log_user_action(update, context, "/weather")
     try:
         city = context.args[0]
         url = 'https://api.openweathermap.org/data/2.5/weather?q=' + city + '&units=metric&lang=ru&appid=79d1ca96933b0328e1c7e3e7a26cb347'
@@ -294,5 +314,7 @@ async def weather_response(update, context):
 
 
 async def stop(update, context):
+    log_user_action(update, context, "/stop")
     await update.message.reply_text("Всего доброго!")
     return ConversationHandler.END
+
