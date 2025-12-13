@@ -186,7 +186,7 @@ async def sights_numbers(update, context):
         if city_data:
             city_name = city_data[1]
             sights = city_data[2]
-            sights += '\n' + sight['properties']['CompanyMetaData'].get('name', '')
+            # sights += '\n' + sight['properties']['CompanyMetaData'].get('name', '')
         else:
             city_name = city_data[1]
             sights = sight['properties']['CompanyMetaData'].get('name', '')
