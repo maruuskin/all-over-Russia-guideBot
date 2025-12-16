@@ -222,7 +222,7 @@ async def sights_in_city(update, context):
         metks = ''
         req = "http://static-maps.yandex.ru/1.x/?ll=" + str(
             round((min(coords_left) + max(coords_left)) / 2, 6)) + ',' + str(
-            round((min(coords_right) + max(coords_right)) / 2, 6)) + '&spn=0.2,0.2&l=map&pt=' + str(
+            round((min(coords_right) + max(coords_right)) / 2, 6)) + '&spn=0.1,0.1&l=map&pt=' + str(
             all_coords[0][0]) + ',' + str(all_coords[0][1]) + ',' + 'pmorl1'
         k = 0
 
@@ -261,16 +261,23 @@ async def sights_numbers(update, context):
     cursor.execute("SELECT * FROM sights WHERE city_id=?",
                    (city_id,))
     city_info = cursor.fetchall()
-
+    print(7)
     for number in numbers:
-        sight = city_info[int(number) - 1][1]
-        req = "http://static-maps.yandex.ru/1.x/?ll=" + str(city_info[int(number) - 1][3]) + ',' + str(
-            city_info[int(number) - 1][4]) + '&spn=0.02,0.02&l=map&pt=' + str(
-            city_info[int(number) - 1][3]) + ',' + str(city_info[int(number) - 1][4]) + ',' + 'pmorl' + number
-        with open('im.jpg', 'wb') as f:
-            f.write(requests.get(req).content)
-        await update.message.reply_photo(photo="im.jpg",
-                                         caption=sight)
+        if number in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]:
+            print(77)
+            sight = city_info[int(number) - 1][1]
+            req = "http://static-maps.yandex.ru/1.x/?ll=" + str(city_info[int(number) - 1][3]) + ',' + str(
+                city_info[int(number) - 1][4]) + '&spn=0.02,0.02&l=map&pt=' + str(
+                city_info[int(number) - 1][3]) + ',' + str(city_info[int(number) - 1][4]) + ',' + 'pmorl' + number
+            with open('im.jpg', 'wb') as f:
+                f.write(requests.get(req).content)
+            await update.message.reply_photo(photo="im.jpg",
+                                            caption=sight)
+        else:
+            await update.message.reply_text(
+            'Достопримечательности с номером ' + number + ' не существует.')
+
+            
 
     return ConversationHandler.END  
 
