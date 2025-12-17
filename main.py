@@ -3,7 +3,7 @@ import logging
 from telegram.ext import Application, MessageHandler, filters, CommandHandler, ConversationHandler
 from config import BOT_TOKEN
 from functions import start, help, hotels_in_city, restaurants, weather_response, sights_in_city, sights_numbers, \
-    get_location_cafes, get_location_hotels, stop
+    get_location_cafes, get_location_hotels, get_location_weather, stop
 from db_operators import create_database
 from log_operators import log_all_messages, setup_logging
 
@@ -24,7 +24,18 @@ def main():
 
     application.add_handler(CommandHandler("start", start), group=0)
     application.add_handler(CommandHandler("help", help), group=0)
-    application.add_handler(CommandHandler("weather", weather_response), group=0)
+    
+    conv_handler_weather = ConversationHandler(
+        entry_points=[CommandHandler('weather', weather_response)],
+
+        states={
+            1: [MessageHandler(filters._Location(), get_location_weather)]
+        },
+
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+
+    application.add_handler(conv_handler_weather, group=0)
 
     conv_handler_sights = ConversationHandler(
         entry_points=[CommandHandler('sights', sights_in_city)],
@@ -38,7 +49,7 @@ def main():
         allow_reentry=True
     )
 
-    application.add_handler(conv_handler_sights)
+    application.add_handler(conv_handler_sights, group=0)
 
     conv_handler_cafes = ConversationHandler(
         entry_points=[CommandHandler('cafes', restaurants)],
@@ -50,7 +61,7 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
 
-    application.add_handler(conv_handler_cafes)
+    application.add_handler(conv_handler_cafes, group=0)
 
     conv_handler_hotels = ConversationHandler(
         entry_points=[CommandHandler('hotels', hotels_in_city)],
@@ -62,7 +73,7 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
 
-    application.add_handler(conv_handler_hotels)
+    application.add_handler(conv_handler_hotels, group=0)
 
     application.run_polling()
 
